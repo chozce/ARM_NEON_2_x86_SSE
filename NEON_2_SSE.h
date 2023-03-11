@@ -2292,7 +2292,19 @@ _NEON2SSESTORAGE float64x2_t vrndnq_f64(float64x2_t a); // VRND.F64 q0,q0
 //Sqrt
 _NEON2SSE_GLOBAL float32x4_t vsqrtq_f32(float32x4_t a); // VSQRT.F32 q0,q0
 _NEON2SSE_GLOBAL float64x2_t vsqrtq_f64(float64x2_t a); // VSQRT.F64 q0,q0
-
+//Dot product operations (arch=armv8.2-a+dotprod)
+_NEON2SSESTORAGE uint32x2_t vdot_u32(uint32x2_t r, uint8x8_t a, uint8x8_t b); // UDOT Vd.2S,Vn.8B,Vm.8B
+_NEON2SSESTORAGE uint32x4_t vdotq_u32(uint32x4_t r, uint8x16_t a, uint8x16_t b); // UDOT Vd.4S,Vn.16B,Vm.16B
+_NEON2SSESTORAGE int32x2_t vdot_s32(int32x2_t r, int8x8_t a, int8x8_t b); // SDOT Vd.2S,Vn.8B,Vm.8B
+_NEON2SSESTORAGE int32x4_t vdotq_s32(int32x4_t r, int8x16_t a, int8x16_t b); // SDOT Vd.4S,Vn.16B,Vm.16B
+_NEON2SSESTORAGE uint32x2_t vdot_lane_u32(uint32x2_t r, uint8x8_t a, uint8x8_t b, __constrange(0,1) int lane); // UDOT Vd.2S,Vn.8B,Vm.4B[lane]
+_NEON2SSESTORAGE uint32x4_t vdotq_lane_u32(uint32x4_t r, uint8x16_t a, uint8x8_t b, __constrange(0,1) int lane); // UDOT Vd.4S,Vn.16B,Vm.4B[lane]
+_NEON2SSESTORAGE int32x2_t vdot_lane_s32(int32x2_t r, int8x8_t a, int8x8_t b, __constrange(0,1) int lane); // SDOT Vd.2S,Vn.8B,Vm.4B[lane]
+_NEON2SSESTORAGE int32x4_t vdotq_lane_s32(int32x4_t r, int8x16_t a, int8x8_t b, __constrange(0,1) int lane); // SDOT Vd.4S,Vn.16B,Vm.4B[lane]
+_NEON2SSESTORAGE uint32x2_t vdot_laneq_u32(uint32x2_t r, uint8x8_t a, uint8x16_t b, __constrange(0,3) int lane); // UDOT Vd.2S,Vn.8B,Vm.4B[lane]
+_NEON2SSESTORAGE uint32x4_t vdotq_laneq_u32(uint32x4_t r, uint8x16_t a, uint8x16_t b, __constrange(0,3) int lane); // UDOT Vd.4S,Vn.16B,Vm.4B[lane]
+_NEON2SSESTORAGE int32x2_t vdot_laneq_s32(int32x2_t r, int8x8_t a, int8x16_t b, __constrange(0,3) int lane); // SDOT Vd.2S,Vn.8B,Vm.4B[lane]
+_NEON2SSESTORAGE int32x4_t vdotq_laneq_s32(int32x4_t r, int8x16_t a, int8x16_t b, __constrange(0,3) int lane); // SDOT Vd.4S,Vn.16B,Vm.4B[lane]
 
 //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 // the following macros solve the problem of the "immediate parameters requirement" for some x86 intrinsics.
@@ -16868,5 +16880,137 @@ _NEON2SSE_GLOBAL float32x4_t vsqrtq_f32(float32x4_t a);
 _NEON2SSE_GLOBAL float64x2_t vsqrtq_f64(float64x2_t a);
 #define vsqrtq_f64 _mm_sqrt_pd
 
+//************* Dot product operations ******************
+_NEON2SSESTORAGE uint32x2_t vdot_u32(uint32x2_t r, uint8x8_t a, uint8x8_t b);
+_NEON2SSE_INLINE _NEON2SSE_PERFORMANCE_WARNING(uint32x2_t vdot_u32(uint32x2_t r, uint8x8_t a, uint8x8_t b), _NEON2SSE_REASON_SLOW_SERIAL)
+{
+    for (int i=0; i<2; i++) {
+        for (int j=0; j<4; j++) {
+            r.m64_u32[i] += a.m64_u8[i*4+j]*b.m64_u8[i*4+j];
+        }
+    }
+    return r;
+}
+
+_NEON2SSESTORAGE uint32x4_t vdotq_u32(uint32x4_t r, uint8x16_t a, uint8x16_t b);
+_NEON2SSE_INLINE _NEON2SSE_PERFORMANCE_WARNING(uint32x4_t vdotq_u32(uint32x4_t r, uint8x16_t a, uint8x16_t b), _NEON2SSE_REASON_SLOW_SERIAL)
+{
+    for (int i=0; i<4; i++) {
+        for (int j=0; j<4; j++) {
+            r.m128i_u32[i] += a.m128i_u8[i*4+j]*b.m128i_u8[i*4+j];
+        }
+    }
+    return r;
+}
+
+_NEON2SSESTORAGE int32x2_t vdot_s32(int32x2_t r, int8x8_t a, int8x8_t b);
+_NEON2SSE_INLINE _NEON2SSE_PERFORMANCE_WARNING(int32x2_t vdot_s32(int32x2_t r, int8x8_t a, int8x8_t b), _NEON2SSE_REASON_SLOW_SERIAL)
+{
+    for (int i=0; i<2; i++) {
+        for (int j=0; j<4; j++) {
+            r.m64_i32[i] += a.m64_i8[i*4+j]*b.m64_i8[i*4+j];
+        }
+    }
+    return r;
+}
+
+_NEON2SSESTORAGE int32x4_t vdotq_s32(int32x4_t r, int8x16_t a, int8x16_t b);
+_NEON2SSE_INLINE _NEON2SSE_PERFORMANCE_WARNING(int32x4_t vdotq_s32(int32x4_t r, int8x16_t a, int8x16_t b), _NEON2SSE_REASON_SLOW_SERIAL)
+{
+    for (int i=0; i<4; i++) {
+        for (int j=0; j<4; j++) {
+            r.m128i_i32[i] += a.m128i_i8[i*4+j]*b.m128i_i8[i*4+j];
+        }
+    }
+    return r;
+}
+
+_NEON2SSESTORAGE uint32x2_t vdot_lane_u32(uint32x2_t r, uint8x8_t a, uint8x8_t b, __constrange(0,1) int lane);
+_NEON2SSE_INLINE _NEON2SSE_PERFORMANCE_WARNING(uint32x2_t vdot_lane_u32(uint32x2_t r, uint8x8_t a, uint8x8_t b, __constrange(0,1) int lane), _NEON2SSE_REASON_SLOW_SERIAL)
+{
+    for (int i=0; i<2; i++) {
+        for (int j=0; j<4; j++) {
+            r.m64_u32[i] += a.m64_u8[i*4+j]*b.m64_u8[lane*4+j];
+        }
+    }
+    return r;
+}
+
+_NEON2SSESTORAGE uint32x4_t vdotq_lane_u32(uint32x4_t r, uint8x16_t a, uint8x8_t b, __constrange(0,1) int lane);
+_NEON2SSE_INLINE _NEON2SSE_PERFORMANCE_WARNING(uint32x4_t vdotq_lane_u32(uint32x4_t r, uint8x16_t a, uint8x8_t b, __constrange(0,1) int lane), _NEON2SSE_REASON_SLOW_SERIAL)
+{
+    for (int i=0; i<4; i++) {
+        for (int j=0; j<4; j++) {
+            r.m128i_u32[i] += a.m128i_u8[i*4+j]*b.m64_u8[lane*4+j];
+        }
+    }
+    return r;
+}
+
+_NEON2SSESTORAGE int32x2_t vdot_lane_s32(int32x2_t r, int8x8_t a, int8x8_t b, __constrange(0,1) int lane);
+_NEON2SSE_INLINE _NEON2SSE_PERFORMANCE_WARNING(int32x2_t vdot_lane_s32(int32x2_t r, int8x8_t a, int8x8_t b, __constrange(0,1) int lane), _NEON2SSE_REASON_SLOW_SERIAL)
+{
+    for (int i=0; i<2; i++) {
+        for (int j=0; j<4; j++) {
+            r.m64_i32[i] += a.m64_i8[i*4+j]*b.m64_i8[lane*4+j];
+        }
+    }
+    return r;
+}
+
+_NEON2SSESTORAGE int32x4_t vdotq_lane_s32(int32x4_t r, int8x16_t a, int8x8_t b, __constrange(0,1) int lane);
+_NEON2SSE_INLINE _NEON2SSE_PERFORMANCE_WARNING(int32x4_t vdotq_lane_s32(int32x4_t r, int8x16_t a, int8x8_t b, __constrange(0,1) int lane), _NEON2SSE_REASON_SLOW_SERIAL)
+{
+    for (int i=0; i<4; i++) {
+        for (int j=0; j<4; j++) {
+            r.m128i_i32[i] += a.m128i_i8[i*4+j]*b.m64_i8[lane*4+j];
+        }
+    }
+    return r;
+}
+
+_NEON2SSESTORAGE uint32x2_t vdot_laneq_u32(uint32x2_t r, uint8x8_t a, uint8x16_t b, __constrange(0,3) int lane);
+_NEON2SSE_INLINE _NEON2SSE_PERFORMANCE_WARNING(uint32x2_t vdot_laneq_u32(uint32x2_t r, uint8x8_t a, uint8x16_t b, __constrange(0,3) int lane), _NEON2SSE_REASON_SLOW_SERIAL)
+{
+    for (int i=0; i<2; i++) {
+        for (int j=0; j<4; j++) {
+            r.m64_u32[i] += a.m64_u8[i*4+j]*b.m128i_u8[lane*4+j];
+        }
+    }
+    return r;
+}
+
+_NEON2SSESTORAGE uint32x4_t vdotq_laneq_u32(uint32x4_t r, uint8x16_t a, uint8x16_t b, __constrange(0,3) int lane);
+_NEON2SSE_INLINE _NEON2SSE_PERFORMANCE_WARNING(uint32x4_t vdotq_laneq_u32(uint32x4_t r, uint8x16_t a, uint8x16_t b, __constrange(0,3) int lane), _NEON2SSE_REASON_SLOW_SERIAL)
+{
+    for (int i=0; i<4; i++) {
+        for (int j=0; j<4; j++) {
+            r.m128i_u32[i] += a.m128i_u8[i*4+j]*b.m128i_u8[lane*4+j];
+        }
+    }
+    return r;
+}
+
+_NEON2SSESTORAGE int32x2_t vdot_laneq_s32(int32x2_t r, int8x8_t a, int8x16_t b, __constrange(0,3) int lane);
+_NEON2SSE_INLINE _NEON2SSE_PERFORMANCE_WARNING(int32x2_t vdot_laneq_s32(int32x2_t r, int8x8_t a, int8x16_t b, __constrange(0,3) int lane), _NEON2SSE_REASON_SLOW_SERIAL)
+{
+    for (int i=0; i<2; i++) {
+        for (int j=0; j<4; j++) {
+            r.m64_i32[i] += a.m64_i8[i*4+j]*b.m128i_i8[lane*4+j];
+        }
+    }
+    return r;
+}
+
+_NEON2SSESTORAGE int32x4_t vdotq_laneq_s32(int32x4_t r, int8x16_t a, int8x16_t b, __constrange(0,3) int lane);
+_NEON2SSE_INLINE _NEON2SSE_PERFORMANCE_WARNING(int32x4_t vdotq_laneq_s32(int32x4_t r, int8x16_t a, int8x16_t b, __constrange(0,3) int lane), _NEON2SSE_REASON_SLOW_SERIAL)
+{
+    for (int i=0; i<4; i++) {
+        for (int j=0; j<4; j++) {
+            r.m128i_i32[i] += a.m128i_i8[i*4+j]*b.m128i_i8[lane*4+j];
+        }
+    }
+    return r;
+}
 
 #endif /* NEON2SSE_H */
