@@ -61,6 +61,9 @@
 #   include <smmintrin.h> //SSE4.1
 #   include <nmmintrin.h> //SSE4.2
 #endif
+#ifdef USE_FMA
+#   include <immintrin.h> //FMA
+#endif
 
 #include <math.h>
 
@@ -2320,6 +2323,12 @@ _NEON2SSESTORAGE int32x4_t vsudotq_laneq_s32(int32x4_t r, int8x16_t a, uint8x16_
 _NEON2SSESTORAGE int32x4_t vmmlaq_s32(int32x4_t r, int8x16_t a, int8x16_t b); // SMMLA Vd.4S,Vn.16B,Vm.16B
 _NEON2SSESTORAGE uint32x4_t vmmlaq_u32(uint32x4_t r, uint8x16_t a, uint8x16_t b); // UMMLA Vd.4S,Vn.16B,Vm.16B
 _NEON2SSESTORAGE int32x4_t vusmmlaq_s32(int32x4_t r, uint8x16_t a, int8x16_t b); // USMMLA Vd.4S,Vn.16B,Vm.16B
+//Floating-point fused multiply-add to accumulator
+_NEON2SSESTORAGE float32x2_t vfma_f32(float32x2_t a, float32x2_t b, float32x2_t c); // FMLA Vd.2S,Vn.2S,Vm.2S
+_NEON2SSESTORAGE float32x4_t vfmaq_f32(float32x4_t a, float32x4_t b, float32x4_t c); // FMLA Vd.4S,Vn.4S,Vm.4S
+//Floating-point fused multiply-subtract from accumulator
+_NEON2SSESTORAGE float32x2_t vfms_f32(float32x2_t a, float32x2_t b, float32x2_t c); // FMLS Vd.2S,Vn.2S,Vm.2S
+_NEON2SSESTORAGE float32x4_t vfmsq_f32(float32x4_t a, float32x4_t b, float32x4_t c); // FMLS Vd.4S,Vn.4S,Vm.4S
 
 //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 // the following macros solve the problem of the "immediate parameters requirement" for some x86 intrinsics.
@@ -17177,5 +17186,80 @@ _NEON2SSE_INLINE _NEON2SSE_PERFORMANCE_WARNING(int32x4_t vusmmlaq_s32(int32x4_t 
     }
     return r;
 }
+
+//************* Floating-point fused multiply-add to accumulator ******************
+_NEON2SSESTORAGE float32x2_t vfma_f32(float32x2_t a, float32x2_t b, float32x2_t c);
+#ifdef USE_FMA
+_NEON2SSE_INLINE float32x2_t vfma_f32(float32x2_t a, float32x2_t b, float32x2_t c)
+{
+    __m128 res;
+    __m64_128 res64;
+    res = _mm_fmadd_ps(_pM128(b), _pM128(c), _pM128(a));
+    _M64f(res64, res);
+    return res64;
+}
+#else
+_NEON2SSE_INLINE _NEON2SSE_PERFORMANCE_WARNING(float32x2_t vfma_f32(float32x2_t a, float32x2_t b, float32x2_t c), _NEON2SSE_REASON_SLOW_SERIAL)
+{
+    for (int i=0; i<2; i++) {
+        a.m64_f32[i] = fmaf(b.m64_f32[i], c.m64_f32[i], a.m64_f32[i]);
+    }
+    return a;
+}
+#endif
+
+_NEON2SSESTORAGE float32x4_t vfmaq_f32(float32x4_t a, float32x4_t b, float32x4_t c);
+#ifdef USE_FMA
+_NEON2SSE_INLINE float32x4_t vfmaq_f32(float32x4_t a, float32x4_t b, float32x4_t c)
+{
+    return _mm_fmadd_ps(b, c, a);
+}
+#else
+_NEON2SSE_INLINE _NEON2SSE_PERFORMANCE_WARNING(float32x4_t vfmaq_f32(float32x4_t a, float32x4_t b, float32x4_t c), _NEON2SSE_REASON_SLOW_SERIAL)
+{
+    for (int i=0; i<4; i++) {
+        a.m128_f32[i] = fmaf(b.m128_f32[i], c.m128_f32[i], a.m128_f32[i]);
+    }
+    return a;
+}
+#endif
+
+//************* Floating-point fused multiply-subtract from accumulator ******************
+_NEON2SSESTORAGE float32x2_t vfms_f32(float32x2_t a, float32x2_t b, float32x2_t c);
+#ifdef USE_FMA
+_NEON2SSE_INLINE float32x2_t vfms_f32(float32x2_t a, float32x2_t b, float32x2_t c)
+{
+    __m128 res;
+    __m64_128 res64;
+    b = vneg_f32(b);
+    res = _mm_fmadd_ps(_pM128(b), _pM128(c), _pM128(a));
+    _M64f(res64, res);
+    return res64;
+}
+#else
+_NEON2SSE_INLINE _NEON2SSE_PERFORMANCE_WARNING(float32x2_t vfms_f32(float32x2_t a, float32x2_t b, float32x2_t c), _NEON2SSE_REASON_SLOW_SERIAL)
+{
+    for (int i=0; i<2; i++) {
+        a.m64_f32[i] = fmaf(-b.m64_f32[i], c.m64_f32[i], a.m64_f32[i]);
+    }
+    return a;
+}
+#endif
+
+_NEON2SSESTORAGE float32x4_t vfmsq_f32(float32x4_t a, float32x4_t b, float32x4_t c);
+#ifdef USE_FMA
+_NEON2SSE_INLINE float32x4_t vfmsq_f32(float32x4_t a, float32x4_t b, float32x4_t c)
+{
+    return _mm_fmadd_ps(vnegq_f32(b), c, a);
+}
+#else
+_NEON2SSE_INLINE _NEON2SSE_PERFORMANCE_WARNING(float32x4_t vfmsq_f32(float32x4_t a, float32x4_t b, float32x4_t c), _NEON2SSE_REASON_SLOW_SERIAL)
+{
+    for (int i=0; i<4; i++) {
+        a.m128_f32[i] = fmaf(-b.m128_f32[i], c.m128_f32[i], a.m128_f32[i]);
+    }
+    return a;
+}
+#endif
 
 #endif /* NEON2SSE_H */
